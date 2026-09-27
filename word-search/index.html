@@ -311,6 +311,26 @@
     align-items: baseline;
     padding-block: 4px;
     border-bottom: 1px dashed var(--rule-soft);
+    max-height: 90px;
+    overflow: hidden;
+    transition: opacity .3s ease, max-height .35s ease, padding .35s ease, border-color .35s ease;
+  }
+  .words li.gone { opacity: 0; max-height: 0; padding-block: 0; border-color: transparent; }
+  .words li.empty { grid-template-columns: 1fr; color: var(--ink-2); border: 0; }
+  @media (prefers-reduced-motion: reduce) { .words li { transition: none; } }
+  @media (max-width: 799px) {
+    aside { order: -1; }
+    .how, .best { display: none; }
+    aside h2 { font-size: 16px; }
+    .words:not(.gloss) { display: flex; flex-wrap: wrap; gap: 6px; }
+    .words:not(.gloss) li {
+      display: flex; gap: 6px; align-items: center;
+      border: 1px solid var(--rule-soft); border-radius: 999px;
+      padding: 2px 10px;
+    }
+    .words:not(.gloss) li.gone { padding-inline: 0; max-width: 0; border-width: 0; }
+    .words:not(.gloss) .sw { display: none; }
+    .words:not(.gloss) .w { font-size: 16px; }
   }
   .sw {
     width: 12px; height: 12px;
@@ -466,6 +486,7 @@
   const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const chars = (w) => Array.from(w);
   const fmt = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const josa = (w, a, b) => { const k = w.charCodeAt(w.length - 1) - 0xAC00; return w + (k >= 0 && k < 11172 && k % 28 ? a : b); };
   const eq = (a, b) => a && b && a.r === b.r && a.c === b.c;
 
   function entries(key) {
@@ -590,9 +611,10 @@
     const masked = T.gloss && els.mask.checked;
     els.words.classList.toggle('gloss', !!T.gloss);
     els.words.innerHTML = '';
-    for (const w of S.words) {
+    // 찾은 낱말은 목록에서 빼고, 방금 찾은 낱말만 접히는 효과를 위해 잠깐 남겨 둔다
+    const shown = S.words.filter((w) => !w.found || w.word === S.leaving);
+    for (const w of shown) {
       const li = document.createElement('li');
-      if (w.found) li.className = 'found';
       const sw = document.createElement('span');
       sw.className = 'sw';
       if (w.found) sw.style.background = `var(--m${w.color})`;
@@ -600,15 +622,23 @@
       t.className = 'w';
       t.textContent = (masked && !w.found) ? `${'○'.repeat(chars(w.word).length)}` : w.word;
       li.append(sw, t);
-      if (T.gloss && (masked || w.found)) {
+      if (T.gloss && masked) {
         const g = document.createElement('span');
         g.className = 'g';
         g.textContent = w.gloss;
         li.appendChild(g);
       }
       els.words.appendChild(li);
+      if (w.found) requestAnimationFrame(() => requestAnimationFrame(() => li.classList.add('gone')));
     }
-    els.listTitle.textContent = `찾을 낱말 · ${T.name}`;
+    if (!S.words.some((w) => !w.found) && !S.leaving) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = '모두 찾았습니다.';
+      els.words.appendChild(li);
+    }
+    const left = S.words.length - S.foundCount;
+    els.listTitle.textContent = `남은 낱말 ${left}개 · ${T.name}`;
     els.how.textContent = DIFFS[S.diffKey].how + (masked ? ' 뜻풀이만 보고 낱말을 떠올려 보세요.' : '');
     els.maskWrap.classList.toggle('off', !T.gloss);
     els.mask.disabled = !T.gloss;
@@ -655,16 +685,19 @@
       w.color = S.foundCount % COLORS;
       w.hit = cells;
       S.foundCount++;
+      S.leaving = w.word;
+      clearTimeout(S.leaveTimer);
+      S.leaveTimer = setTimeout(() => { S.leaving = null; renderList(); }, 400);
       say(w.gloss
         ? `<strong>${esc(w.word)}</strong> — ${esc(w.gloss)}`
-        : `<strong>${esc(w.word)}</strong>을(를) 찾았습니다.`);
+        : `<strong>${esc(josa(w.word, '을', '를'))}</strong> 찾았습니다.`);
       if (S.foundCount === S.words.length) finish();
     } else if (S.words.some((x) => x.found && (x.word === str || x.word === rev))) {
-      say(`<strong>${esc(str)}</strong>은(는) 이미 찾은 낱말입니다.`);
+      say(`<strong>${esc(josa(str, '은', '는'))}</strong> 이미 찾은 낱말입니다.`);
     } else {
       miss = { a: cells[0], b: cells[cells.length - 1] };
       setTimeout(() => { miss = null; renderMarks(); }, 520);
-      say(`<strong>${esc(str)}</strong>은(는) 목록에 없는 낱말입니다.`);
+      say(`<strong>${esc(josa(str, '은', '는'))}</strong> 목록에 없는 낱말입니다.`);
     }
     render();
   }
@@ -793,7 +826,7 @@
     const T = THEMES[S.themeKey];
     say(T.gloss && els.mask.checked
       ? `깜빡이는 글자에서 ‘${esc(w.gloss)}’ 낱말이 시작됩니다.`
-      : `깜빡이는 글자에서 <strong>${esc(w.word)}</strong>이(가) 시작됩니다.`);
+      : `깜빡이는 글자에서 <strong>${esc(josa(w.word, '이', '가'))}</strong> 시작됩니다.`);
     render();
   });
 
