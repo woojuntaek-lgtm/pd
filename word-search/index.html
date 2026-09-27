@@ -1,0 +1,822 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>원고지 낱말 찾기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Gowun+Dodum&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+  :root {
+    --paper: #F6F8F1;
+    --paper-2: #EAEFE3;
+    --rule: #4B8659;
+    --rule-soft: #BCD5C1;
+    --ink: #1D2921;
+    --ink-2: #56685B;
+    --seal: #B8392A;
+    --seal-ink: #FFF6F0;
+    --miss: rgba(184, 57, 42, .28);
+    --sel: rgba(75, 134, 89, .30);
+    --m0: rgba(255, 208, 0, .55);
+    --m1: rgba(255, 118, 150, .42);
+    --m2: rgba(80, 180, 255, .42);
+    --m3: rgba(110, 210, 110, .48);
+    --m4: rgba(190, 130, 255, .42);
+    --m5: rgba(255, 150, 50, .48);
+    --serif: "Nanum Myeongjo", "AppleMyungjo", "Batang", serif;
+    --sans: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --paper: #131A15;
+      --paper-2: #1A231D;
+      --rule: #66A876;
+      --rule-soft: #2A3B2F;
+      --ink: #E4ECE3;
+      --ink-2: #97A89B;
+      --seal: #D9573F;
+      --seal-ink: #1A0E0B;
+      --miss: rgba(217, 87, 63, .38);
+      --sel: rgba(102, 168, 118, .38);
+      --m0: rgba(230, 190, 0, .42);
+      --m1: rgba(240, 95, 130, .40);
+      --m2: rgba(60, 150, 235, .42);
+      --m3: rgba(80, 180, 90, .42);
+      --m4: rgba(160, 110, 240, .42);
+      --m5: rgba(235, 130, 40, .42);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --paper: #131A15;
+    --paper-2: #1A231D;
+    --rule: #66A876;
+    --rule-soft: #2A3B2F;
+    --ink: #E4ECE3;
+    --ink-2: #97A89B;
+    --seal: #D9573F;
+    --seal-ink: #1A0E0B;
+    --miss: rgba(217, 87, 63, .38);
+    --sel: rgba(102, 168, 118, .38);
+    --m0: rgba(230, 190, 0, .42);
+    --m1: rgba(240, 95, 130, .40);
+    --m2: rgba(60, 150, 235, .42);
+    --m3: rgba(80, 180, 90, .42);
+    --m4: rgba(160, 110, 240, .42);
+    --m5: rgba(235, 130, 40, .42);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  .app {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  /* 머리 */
+  header { display: flex; align-items: center; gap: 14px; }
+  .seal {
+    flex: none;
+    width: 52px; height: 52px;
+    background: var(--seal);
+    color: var(--seal-ink);
+    border-radius: 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    place-items: center;
+    padding: 6px;
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 17px;
+    line-height: 1;
+    transform: rotate(-4deg);
+    box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--seal-ink) 30%, transparent);
+  }
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(24px, 5vw, 32px);
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+  .sub { margin: 2px 0 0; color: var(--ink-2); font-size: 14px; }
+
+  /* 조작부 */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+  }
+  .field { display: flex; align-items: center; gap: 8px; }
+  .label { font-size: 13px; color: var(--ink-2); letter-spacing: .04em; }
+  select, button, .seg label {
+    font: inherit;
+    color: var(--ink);
+  }
+  select {
+    background: var(--paper-2);
+    border: 1px solid var(--rule-soft);
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-height: 36px;
+  }
+  .seg {
+    display: inline-flex;
+    border: 1px solid var(--rule-soft);
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 0; padding: 0;
+  }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label {
+    padding: 6px 12px;
+    min-height: 36px;
+    display: flex; align-items: center;
+    cursor: pointer;
+    background: var(--paper-2);
+  }
+  .seg label:not(:first-of-type) { border-left: 1px solid var(--rule-soft); }
+  .seg input:checked + label { background: var(--rule); color: var(--paper); }
+  .seg input:focus-visible + label { outline: 2px solid var(--seal); outline-offset: -2px; }
+  .check { display: flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; }
+  .check input { accent-color: var(--rule); width: 16px; height: 16px; }
+  .check.off { opacity: .45; cursor: default; }
+  .btn {
+    border: 1px solid var(--rule);
+    background: transparent;
+    border-radius: 6px;
+    padding: 6px 14px;
+    min-height: 36px;
+    cursor: pointer;
+  }
+  .btn:hover { background: var(--paper-2); }
+  .btn.primary { background: var(--rule); color: var(--paper); }
+  .btn.primary:hover { filter: brightness(1.08); }
+  :focus-visible { outline: 2px solid var(--seal); outline-offset: 2px; }
+
+  /* 본문 */
+  main {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+  }
+  @media (min-width: 800px) {
+    main { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); }
+  }
+
+  .stats {
+    display: flex;
+    gap: 18px;
+    align-items: baseline;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .stat { display: flex; gap: 6px; align-items: baseline; }
+  .stat b {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stats .btn { margin-left: auto; }
+
+  /* 원고지 판 */
+  .sheet {
+    position: relative;
+    border: 4px double var(--rule);
+    background: var(--paper);
+    padding: 3px;
+  }
+  .board {
+    position: relative;
+    aspect-ratio: 1;
+    width: 100%;
+    container-type: inline-size;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+    background-image:
+      linear-gradient(to right, var(--rule-soft) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--rule-soft) 1px, transparent 1px);
+    background-size: calc(100% / var(--n)) calc(100% / var(--n));
+    border-right: 1px solid var(--rule-soft);
+    border-bottom: 1px solid var(--rule-soft);
+    cursor: crosshair;
+  }
+  .marks {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+  }
+  .marks line { stroke-linecap: round; stroke-width: .74; }
+  .marks .sel { stroke: var(--sel); }
+  .marks .miss { stroke: var(--miss); animation: fade .5s ease-out forwards; }
+  @keyframes fade { to { opacity: 0; } }
+  .cells {
+    position: absolute; inset: 0;
+    display: grid;
+    grid-template-columns: repeat(var(--n), 1fr);
+    grid-template-rows: repeat(var(--n), 1fr);
+  }
+  .cell {
+    all: unset;
+    display: grid;
+    place-items: center;
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: calc(100cqi / var(--n) * .5);
+    color: var(--ink);
+    border-radius: 50%;
+  }
+  .cell:focus-visible { outline: 2px solid var(--seal); outline-offset: -4px; }
+  .cell.anchor { box-shadow: inset 0 0 0 3px var(--rule); }
+  .cell.hint { animation: pulse 1s ease-in-out 3; }
+  @keyframes pulse {
+    0%, 100% { box-shadow: inset 0 0 0 0 var(--seal); color: var(--ink); }
+    50% { box-shadow: inset 0 0 0 4px var(--seal); color: var(--seal); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell.hint { animation: none; box-shadow: inset 0 0 0 3px var(--seal); color: var(--seal); }
+    .marks .miss { animation: none; opacity: .6; }
+  }
+  .status {
+    min-height: 1.6em;
+    margin: 10px 0 0;
+    font-size: 14px;
+    color: var(--ink-2);
+  }
+  .status strong { color: var(--ink); font-family: var(--serif); }
+
+  /* 완료 */
+  .done {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    background: color-mix(in srgb, var(--paper) 78%, transparent);
+    backdrop-filter: blur(2px);
+    padding: 16px;
+  }
+  .done-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+    padding: 22px 24px;
+    text-align: center;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
+    max-width: 320px;
+  }
+  .done-card h2 { margin: 0; font-family: var(--serif); font-weight: 800; font-size: 24px; }
+  .done-card p { margin: 0; color: var(--ink-2); }
+  .done-card .big { font-family: var(--mono); font-size: 30px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .record { color: var(--seal) !important; font-weight: 700; }
+
+  /* 낱말 목록 */
+  aside h2 {
+    margin: 0 0 4px;
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: 19px;
+  }
+  .how { margin: 0 0 12px; color: var(--ink-2); font-size: 13.5px; }
+  .words {
+    list-style: none;
+    margin: 0; padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 6px 14px;
+  }
+  .words.gloss { grid-template-columns: 1fr; }
+  .words li {
+    display: grid;
+    grid-template-columns: 12px auto;
+    column-gap: 8px;
+    align-items: baseline;
+    padding-block: 4px;
+    border-bottom: 1px dashed var(--rule-soft);
+  }
+  .sw {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    border: 1px solid var(--rule-soft);
+    align-self: center;
+  }
+  .w { font-family: var(--serif); font-weight: 700; font-size: 17px; letter-spacing: .04em; }
+  .words li.found .w { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--ink-2); }
+  .g { grid-column: 2; font-size: 13.5px; color: var(--ink-2); }
+  .words li.found .g { color: var(--ink); }
+  .best { margin-top: 14px; font-size: 13px; color: var(--ink-2); }
+  .best b { font-family: var(--mono); font-weight: 500; color: var(--ink); }
+</style>
+
+<div class="app">
+  <header>
+    <div class="seal" aria-hidden="true"><span>낱</span><span>말</span><span>찾</span><span>기</span></div>
+    <div>
+      <h1>원고지 낱말 찾기</h1>
+      <p class="sub">글자판에 숨은 낱말을 한 줄로 이어 찾아보세요.</p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="field">
+      <label class="label" for="theme">주제</label>
+      <select id="theme"></select>
+    </div>
+    <fieldset class="seg" aria-label="난이도">
+      <input type="radio" name="diff" id="diff-easy" value="easy"><label for="diff-easy">쉬움</label>
+      <input type="radio" name="diff" id="diff-normal" value="normal" checked><label for="diff-normal">보통</label>
+      <input type="radio" name="diff" id="diff-hard" value="hard"><label for="diff-hard">어려움</label>
+    </fieldset>
+    <label class="check" id="mask-wrap"><input type="checkbox" id="mask"> 뜻만 보고 찾기</label>
+    <button class="btn primary" id="new" type="button">새 판</button>
+  </div>
+
+  <main>
+    <section aria-label="글자판">
+      <div class="stats">
+        <span class="stat"><span class="label">시간</span><b id="time">0:00</b></span>
+        <span class="stat"><span class="label">찾은 낱말</span><b id="count">0/0</b></span>
+        <span class="stat"><span class="label">힌트</span><b id="hints">0</b></span>
+        <button class="btn" id="hint" type="button">힌트 (+15초)</button>
+      </div>
+      <div class="sheet">
+        <div class="board" id="board">
+          <svg class="marks" id="marks" aria-hidden="true"></svg>
+          <div class="cells" id="cells" role="grid" aria-label="글자판"></div>
+        </div>
+        <div class="done" id="done" hidden>
+          <div class="done-card">
+            <h2>모두 찾았습니다</h2>
+            <p class="big" id="done-time">0:00</p>
+            <p id="done-detail"></p>
+            <p id="done-record" class="record" hidden>새 최고 기록입니다!</p>
+            <button class="btn primary" id="again" type="button">다음 판</button>
+          </div>
+        </div>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+    </section>
+
+    <aside>
+      <h2 id="list-title">찾을 낱말</h2>
+      <p class="how" id="how"></p>
+      <ul class="words" id="words"></ul>
+      <p class="best" id="best"></p>
+    </aside>
+  </main>
+</div>
+
+<script>
+(() => {
+  const THEMES = {
+    native: { name: '순우리말', gloss: true, words: [
+      ['윤슬', '햇빛이나 달빛에 비쳐 반짝이는 잔물결'],
+      ['미리내', '은하수를 이르는 말'],
+      ['가람', '‘강’의 옛말'],
+      ['너울', '바다에서 크고 사납게 이는 물결'],
+      ['달무리', '달 둘레에 생기는 둥근 빛의 테'],
+      ['여우비', '볕이 난 날 잠깐 뿌리다 그치는 비'],
+      ['는개', '안개보다 굵고 이슬비보다 가는 비'],
+      ['시나브로', '모르는 사이에 조금씩 조금씩'],
+      ['물비늘', '햇살에 비쳐 비늘처럼 반짝이는 잔물결'],
+      ['하늬바람', '서쪽에서 부는 바람'],
+      ['샛바람', '동쪽에서 부는 바람'],
+      ['아람', '밤 따위가 충분히 익어 저절로 벌어진 상태'],
+      ['해거름', '해가 서쪽으로 넘어갈 무렵'],
+      ['마중물', '펌프로 물을 퍼 올리려고 먼저 붓는 물'],
+      ['꽃샘추위', '이른 봄 꽃이 필 무렵에 닥치는 추위'],
+      ['도담도담', '어린아이가 탈 없이 잘 자라는 모양'],
+      ['온새미로', '가르거나 쪼개지 않고 생긴 그대로'],
+      ['다솜', '‘사랑’을 이르는 옛말'],
+    ]},
+    idiom: { name: '사자성어', gloss: true, words: [
+      ['일석이조', '한 가지 일로 두 가지 이득을 봄'],
+      ['동문서답', '묻는 말에 엉뚱한 대답을 함'],
+      ['우공이산', '꾸준히 노력하면 산도 옮길 수 있음'],
+      ['새옹지마', '인생의 좋고 나쁨은 늘 바뀌어 예측하기 어려움'],
+      ['유비무환', '미리 준비하면 걱정할 일이 없음'],
+      ['금상첨화', '좋은 일에 좋은 일이 더해짐'],
+      ['역지사지', '처지를 바꾸어 생각함'],
+      ['과유불급', '지나침은 모자람과 같음'],
+      ['대기만성', '큰 인물은 늦게 이루어짐'],
+      ['온고지신', '옛것을 익혀 새것을 앎'],
+      ['표리부동', '겉과 속이 다름'],
+      ['오리무중', '어떤 일의 갈피를 잡을 수 없음'],
+      ['이심전심', '말하지 않아도 마음이 서로 통함'],
+      ['자업자득', '자기가 한 일의 결과를 자기가 받음'],
+      ['청출어람', '제자가 스승보다 나음'],
+      ['전화위복', '재앙이 바뀌어 오히려 복이 됨'],
+    ]},
+    fruit: { name: '과일', words: ['사과','바나나','포도','딸기','수박','참외','복숭아','자두','키위','망고','레몬','체리','석류','앵두','파인애플','블루베리','멜론','대추','무화과','오렌지','살구','모과'] },
+    animal: { name: '동물', words: ['호랑이','코끼리','기린','사자','여우','너구리','다람쥐','고슴도치','캥거루','하마','얼룩말','판다','고양이','강아지','원숭이','두더지','수달','펭귄','부엉이','거북이'] },
+    food: { name: '우리 음식', words: ['김치찌개','비빔밥','떡볶이','불고기','잡채','순두부','냉면','삼계탕','갈비탕','김밥','만두','칼국수','파전','된장국','수제비','호떡','식혜','송편'] },
+    country: { name: '나라 이름', words: ['대한민국','일본','중국','미국','영국','프랑스','독일','이탈리아','스페인','브라질','캐나다','호주','인도','이집트','멕시코','베트남','태국','러시아','스웨덴','칠레','페루'] },
+    job: { name: '직업', words: ['의사','간호사','선생님','요리사','소방관','경찰관','변호사','기자','화가','가수','약사','조종사','목수','농부','어부','미용사','건축가','작가','판사','배우'] },
+  };
+  const ALL8 = [[0,1],[1,0],[1,1],[-1,1],[0,-1],[-1,0],[-1,-1],[1,-1]];
+  const DIFFS = {
+    easy:   { name: '쉬움',   n: 7,  count: 6,  dirs: [[0,1],[1,0]], how: '낱말은 왼쪽→오른쪽, 위→아래로만 숨어 있습니다.' },
+    normal: { name: '보통',   n: 9,  count: 8,  dirs: [[0,1],[1,0],[1,1],[-1,1]], how: '가로·세로와 대각선 방향으로 숨어 있습니다.' },
+    hard:   { name: '어려움', n: 10, count: 10, dirs: ALL8, how: '여덟 방향 모두, 거꾸로 적힌 낱말도 있습니다.' },
+  };
+  const COMMON = '가나다라마바사아자차카타파하고노도로모보소오조수우주이기리미시지한국대사람일';
+  const COLORS = 6;
+  const PENALTY = 15000;
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    theme: $('theme'), mask: $('mask'), maskWrap: $('mask-wrap'), newBtn: $('new'),
+    time: $('time'), count: $('count'), hints: $('hints'), hint: $('hint'),
+    board: $('board'), marks: $('marks'), cells: $('cells'),
+    done: $('done'), doneTime: $('done-time'), doneDetail: $('done-detail'), doneRecord: $('done-record'), again: $('again'),
+    status: $('status'), words: $('words'), how: $('how'), best: $('best'), listTitle: $('list-title'),
+  };
+
+  const store = {
+    get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+  };
+
+  let S = null;           // 현재 판
+  let drag = null;        // 끌기 중 선택
+  let anchor = null;      // 두 번 눌러 선택할 때의 첫 칸
+  let miss = null;
+  let focusCell = { r: 0, c: 0 };
+  let tick = null;
+
+  const rand = (n) => Math.floor(Math.random() * n);
+  const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = rand(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const chars = (w) => Array.from(w);
+  const fmt = (ms) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
+  const eq = (a, b) => a && b && a.r === b.r && a.c === b.c;
+
+  function entries(key) {
+    return THEMES[key].words.map((w) => Array.isArray(w) ? { word: w[0], gloss: w[1] } : { word: w, gloss: null });
+  }
+
+  function tryPlace(grid, n, w, dirs) {
+    const cs = chars(w), L = cs.length;
+    for (let t = 0; t < 250; t++) {
+      const [dr, dc] = dirs[rand(dirs.length)];
+      const r0 = rand(n), c0 = rand(n);
+      const r1 = r0 + dr * (L - 1), c1 = c0 + dc * (L - 1);
+      if (r1 < 0 || r1 >= n || c1 < 0 || c1 >= n) continue;
+      let ok = true;
+      for (let i = 0; i < L; i++) {
+        const g = grid[r0 + dr * i][c0 + dc * i];
+        if (g !== null && g !== cs[i]) { ok = false; break; }
+      }
+      if (!ok) continue;
+      const cells = [];
+      for (let i = 0; i < L; i++) {
+        const r = r0 + dr * i, c = c0 + dc * i;
+        grid[r][c] = cs[i];
+        cells.push({ r, c });
+      }
+      return cells;
+    }
+    return null;
+  }
+
+  function generate(themeKey, diffKey) {
+    const D = DIFFS[diffKey], n = D.n;
+    const pool = entries(themeKey).filter((e) => chars(e.word).length <= n);
+    let best = null;
+    for (let attempt = 0; attempt < 80; attempt++) {
+      const pick = shuffle(pool).slice(0, D.count).sort((a, b) => chars(b.word).length - chars(a.word).length);
+      const grid = Array.from({ length: n }, () => Array(n).fill(null));
+      const placed = [];
+      for (const e of pick) {
+        const cells = tryPlace(grid, n, e.word, D.dirs);
+        if (cells) placed.push({ ...e, cells, found: false, color: -1 });
+      }
+      if (!best || placed.length > best.placed.length) best = { grid, placed };
+      if (placed.length === pick.length) break;
+    }
+    // 빈칸은 같은 주제의 글자를 섞어 채워 헷갈리게 만든다
+    const decoy = entries(themeKey).flatMap((e) => chars(e.word)).concat(chars(COMMON));
+    for (const row of best.grid) for (let c = 0; c < n; c++) if (row[c] === null) row[c] = decoy[rand(decoy.length)];
+    best.placed.sort((a, b) => a.word.localeCompare(b.word, 'ko'));
+    return {
+      themeKey, diffKey, n, grid: best.grid, words: best.placed,
+      startedAt: Date.now(), penalty: 0, hints: 0, foundCount: 0, done: false, finishedMs: 0,
+    };
+  }
+
+  function elapsed() {
+    if (!S) return 0;
+    return (S.done ? S.finishedMs : Date.now() - S.startedAt) + (S.done ? 0 : S.penalty);
+  }
+
+  function newGame() {
+    S = generate(els.theme.value, document.querySelector('input[name=diff]:checked').value);
+    drag = null; anchor = null; miss = null; focusCell = { r: 0, c: 0 };
+    els.done.hidden = true;
+    say('');
+    buildBoard();
+    render();
+    clearInterval(tick);
+    tick = setInterval(renderTime, 250);
+  }
+
+  function buildBoard() {
+    const n = S.n;
+    els.board.style.setProperty('--n', n);
+    els.marks.setAttribute('viewBox', `0 0 ${n} ${n}`);
+    els.cells.innerHTML = '';
+    for (let r = 0; r < n; r++) {
+      const row = document.createElement('div');
+      row.setAttribute('role', 'row');
+      row.style.display = 'contents';
+      for (let c = 0; c < n; c++) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cell';
+        b.setAttribute('role', 'gridcell');
+        b.dataset.r = r; b.dataset.c = c;
+        b.textContent = S.grid[r][c];
+        b.tabIndex = (r === 0 && c === 0) ? 0 : -1;
+        b.setAttribute('aria-label', `${r + 1}행 ${c + 1}열 ${S.grid[r][c]}`);
+        row.appendChild(b);
+      }
+      els.cells.appendChild(row);
+    }
+  }
+
+  const cellEl = (p) => els.cells.querySelector(`[data-r="${p.r}"][data-c="${p.c}"]`);
+
+  function line(a, b, cls, stroke) {
+    const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    l.setAttribute('x1', a.c + .5); l.setAttribute('y1', a.r + .5);
+    l.setAttribute('x2', b.c + .5); l.setAttribute('y2', b.r + .5);
+    if (cls) l.setAttribute('class', cls);
+    if (stroke) l.setAttribute('stroke', stroke);
+    return l;
+  }
+
+  function renderMarks() {
+    els.marks.innerHTML = '';
+    for (const w of S.words) {
+      if (!w.found) continue;
+      els.marks.appendChild(line(w.hit[0], w.hit[w.hit.length - 1], null, `var(--m${w.color})`));
+    }
+    if (miss) els.marks.appendChild(line(miss.a, miss.b, 'miss'));
+    if (drag && !eq(drag.start, drag.end)) els.marks.appendChild(line(drag.start, drag.end, 'sel'));
+    els.cells.querySelectorAll('.anchor').forEach((e) => e.classList.remove('anchor'));
+    const a = drag ? drag.start : anchor;
+    if (a) cellEl(a)?.classList.add('anchor');
+  }
+
+  function renderList() {
+    const T = THEMES[S.themeKey];
+    const masked = T.gloss && els.mask.checked;
+    els.words.classList.toggle('gloss', !!T.gloss);
+    els.words.innerHTML = '';
+    for (const w of S.words) {
+      const li = document.createElement('li');
+      if (w.found) li.className = 'found';
+      const sw = document.createElement('span');
+      sw.className = 'sw';
+      if (w.found) sw.style.background = `var(--m${w.color})`;
+      const t = document.createElement('span');
+      t.className = 'w';
+      t.textContent = (masked && !w.found) ? `${'○'.repeat(chars(w.word).length)}` : w.word;
+      li.append(sw, t);
+      if (T.gloss && (masked || w.found)) {
+        const g = document.createElement('span');
+        g.className = 'g';
+        g.textContent = w.gloss;
+        li.appendChild(g);
+      }
+      els.words.appendChild(li);
+    }
+    els.listTitle.textContent = `찾을 낱말 · ${T.name}`;
+    els.how.textContent = DIFFS[S.diffKey].how + (masked ? ' 뜻풀이만 보고 낱말을 떠올려 보세요.' : '');
+    els.maskWrap.classList.toggle('off', !T.gloss);
+    els.mask.disabled = !T.gloss;
+    const b = store.get(bestKey());
+    els.best.innerHTML = b ? `이 주제·난이도 최고 기록 <b>${fmt(+b)}</b>` : '';
+  }
+
+  function renderTime() {
+    els.time.textContent = fmt(elapsed());
+  }
+
+  function render() {
+    renderMarks();
+    renderList();
+    renderTime();
+    els.count.textContent = `${S.foundCount}/${S.words.length}`;
+    els.hints.textContent = S.hints;
+  }
+
+  function say(html) { els.status.innerHTML = html; }
+  const esc = (s) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  const bestKey = () => `wongoji-best:${S.themeKey}:${S.diffKey}`;
+
+  function lineCells(a, b) {
+    const dr = Math.sign(b.r - a.r), dc = Math.sign(b.c - a.c);
+    const len = Math.max(Math.abs(b.r - a.r), Math.abs(b.c - a.c));
+    const out = [];
+    for (let i = 0; i <= len; i++) out.push({ r: a.r + dr * i, c: a.c + dc * i });
+    return out;
+  }
+
+  function aligned(a, b) {
+    const dr = b.r - a.r, dc = b.c - a.c;
+    return dr === 0 || dc === 0 || Math.abs(dr) === Math.abs(dc);
+  }
+
+  function submit(cells) {
+    if (cells.length < 2) return;
+    const str = cells.map((p) => S.grid[p.r][p.c]).join('');
+    const rev = chars(str).reverse().join('');
+    const w = S.words.find((x) => !x.found && (x.word === str || x.word === rev));
+    if (w) {
+      w.found = true;
+      w.color = S.foundCount % COLORS;
+      w.hit = cells;
+      S.foundCount++;
+      say(w.gloss
+        ? `<strong>${esc(w.word)}</strong> — ${esc(w.gloss)}`
+        : `<strong>${esc(w.word)}</strong>을(를) 찾았습니다.`);
+      if (S.foundCount === S.words.length) finish();
+    } else if (S.words.some((x) => x.found && (x.word === str || x.word === rev))) {
+      say(`<strong>${esc(str)}</strong>은(는) 이미 찾은 낱말입니다.`);
+    } else {
+      miss = { a: cells[0], b: cells[cells.length - 1] };
+      setTimeout(() => { miss = null; renderMarks(); }, 520);
+      say(`<strong>${esc(str)}</strong>은(는) 목록에 없는 낱말입니다.`);
+    }
+    render();
+  }
+
+  function finish() {
+    S.finishedMs = Date.now() - S.startedAt + S.penalty;
+    S.done = true;
+    clearInterval(tick);
+    anchor = null;
+    const prev = store.get(bestKey());
+    const record = !prev || S.finishedMs < +prev;
+    if (record) store.set(bestKey(), String(S.finishedMs));
+    els.doneTime.textContent = fmt(S.finishedMs);
+    els.doneDetail.textContent = `${THEMES[S.themeKey].name} · ${DIFFS[S.diffKey].name} · 낱말 ${S.words.length}개 · 힌트 ${S.hints}번`;
+    els.doneRecord.hidden = !(record && prev);
+    els.done.hidden = false;
+    els.again.focus();
+  }
+
+  function tap(p) {
+    if (anchor && !eq(anchor, p)) {
+      if (aligned(anchor, p)) {
+        const a = anchor;
+        anchor = null;
+        submit(lineCells(a, p));
+        return;
+      }
+      anchor = p;
+    } else if (anchor && eq(anchor, p)) {
+      anchor = null;
+    } else {
+      anchor = p;
+      say('끝 글자를 누르면 그 사이 글자가 한 줄로 선택됩니다.');
+    }
+    renderMarks();
+  }
+
+  // 포인터: 끌어서 선택하거나, 첫 글자와 끝 글자를 차례로 눌러 선택
+  function cellFromPoint(e, clamp) {
+    const rect = els.cells.getBoundingClientRect();
+    const size = rect.width / S.n;
+    let c = Math.floor((e.clientX - rect.left) / size);
+    let r = Math.floor((e.clientY - rect.top) / size);
+    if (clamp) { r = Math.max(0, Math.min(S.n - 1, r)); c = Math.max(0, Math.min(S.n - 1, c)); }
+    else if (r < 0 || c < 0 || r >= S.n || c >= S.n) return null;
+    return { r, c };
+  }
+
+  function snap(start, p) {
+    const dr = p.r - start.r, dc = p.c - start.c;
+    if (!dr && !dc) return start;
+    const step = Math.round(Math.atan2(dr, dc) / (Math.PI / 4));
+    const sr = Math.round(Math.sin(step * Math.PI / 4)), sc = Math.round(Math.cos(step * Math.PI / 4));
+    let len = Math.max(Math.abs(dr), Math.abs(dc));
+    const inside = (k) => { const r = start.r + sr * k, c = start.c + sc * k; return r >= 0 && c >= 0 && r < S.n && c < S.n; };
+    while (len > 0 && !inside(len)) len--;
+    return { r: start.r + sr * len, c: start.c + sc * len };
+  }
+
+  els.board.addEventListener('pointerdown', (e) => {
+    if (!S || S.done || e.button > 0) return;
+    const p = cellFromPoint(e, false);
+    if (!p) return;
+    e.preventDefault();
+    els.board.setPointerCapture(e.pointerId);
+    drag = { start: p, end: p, moved: false };
+    focusTo(p, false);
+    renderMarks();
+  });
+  els.board.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const end = snap(drag.start, cellFromPoint(e, true));
+    if (!eq(end, drag.end)) {
+      drag.end = end;
+      if (!eq(end, drag.start)) drag.moved = true;
+      renderMarks();
+    }
+  });
+  const endDrag = (e, cancel) => {
+    if (!drag) return;
+    const d = drag;
+    drag = null;
+    if (cancel) { renderMarks(); return; }
+    if (!d.moved || eq(d.start, d.end)) tap(d.start);
+    else { anchor = null; submit(lineCells(d.start, d.end)); }
+    renderMarks();
+  };
+  els.board.addEventListener('pointerup', (e) => endDrag(e, false));
+  els.board.addEventListener('pointercancel', (e) => endDrag(e, true));
+
+  // 키보드: 방향키로 이동, Enter/스페이스로 첫 글자·끝 글자 지정
+  function focusTo(p, move = true) {
+    const prev = cellEl(focusCell);
+    if (prev) prev.tabIndex = -1;
+    focusCell = p;
+    const el = cellEl(p);
+    if (el) { el.tabIndex = 0; if (move) el.focus(); }
+  }
+  els.cells.addEventListener('keydown', (e) => {
+    if (!S || S.done) return;
+    const t = e.target.closest('.cell');
+    if (!t) return;
+    const p = { r: +t.dataset.r, c: +t.dataset.c };
+    const moves = { ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1] };
+    if (moves[e.key]) {
+      e.preventDefault();
+      const [dr, dc] = moves[e.key];
+      focusTo({ r: Math.max(0, Math.min(S.n - 1, p.r + dr)), c: Math.max(0, Math.min(S.n - 1, p.c + dc)) });
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      tap(p);
+    } else if (e.key === 'Escape') {
+      anchor = null; renderMarks();
+    }
+  });
+
+  els.hint.addEventListener('click', () => {
+    if (!S || S.done) return;
+    const left = S.words.filter((w) => !w.found);
+    if (!left.length) return;
+    const w = left[rand(left.length)];
+    S.hints++;
+    S.penalty += PENALTY;
+    const el = cellEl(w.cells[0]);
+    if (el) { el.classList.remove('hint'); void el.offsetWidth; el.classList.add('hint'); setTimeout(() => el.classList.remove('hint'), 3100); }
+    const T = THEMES[S.themeKey];
+    say(T.gloss && els.mask.checked
+      ? `깜빡이는 글자에서 ‘${esc(w.gloss)}’ 낱말이 시작됩니다.`
+      : `깜빡이는 글자에서 <strong>${esc(w.word)}</strong>이(가) 시작됩니다.`);
+    render();
+  });
+
+  for (const [k, t] of Object.entries(THEMES)) {
+    const o = document.createElement('option');
+    o.value = k; o.textContent = t.name;
+    els.theme.appendChild(o);
+  }
+  els.theme.addEventListener('change', newGame);
+  document.querySelectorAll('input[name=diff]').forEach((i) => i.addEventListener('change', newGame));
+  els.mask.addEventListener('change', () => { renderList(); store.set('wongoji-mask', els.mask.checked ? '1' : '0'); });
+  els.newBtn.addEventListener('click', newGame);
+  els.again.addEventListener('click', newGame);
+
+  const savedTheme = store.get('wongoji-theme');
+  if (savedTheme && THEMES[savedTheme]) els.theme.value = savedTheme;
+  const savedDiff = store.get('wongoji-diff');
+  if (savedDiff && DIFFS[savedDiff]) $('diff-' + savedDiff).checked = true;
+  els.mask.checked = store.get('wongoji-mask') === '1';
+  els.theme.addEventListener('change', () => store.set('wongoji-theme', els.theme.value));
+  document.querySelectorAll('input[name=diff]').forEach((i) => i.addEventListener('change', () => store.set('wongoji-diff', i.value)));
+
+  newGame();
+})();
+</script>
+</html>
